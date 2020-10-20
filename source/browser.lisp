@@ -574,11 +574,19 @@ sometimes yields the wrong reasult."
 (export-always 'set-current-buffer)
 (defun set-current-buffer (buffer)
   "Set the active buffer for the active window."
-  (unless (eq 'minibuffer (class-name (class-of buffer)))
-    (if (current-window)
-        (window-set-active-buffer (current-window) buffer)
-        (make-window buffer))
-    buffer))
+  (with-data-access history (history-path buffer)
+    (unless (eq 'minibuffer (class-name (class-of buffer)))
+      (if (current-window)
+          (window-set-active-buffer (current-window) buffer)
+          (make-window buffer))
+      (setf (htree:current history)
+            (or (htree:find-data (make-instance 'history-entry
+                                                :url (url buffer) :id (id buffer))
+                                 history
+                                 :test #'equals)
+                ;; TODO: This can behave erroneously.
+                (htree:current history)))
+      buffer)))
 
 (export-always 'current-minibuffer)
 (defun current-minibuffer ()
